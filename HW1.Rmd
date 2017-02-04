@@ -1,0 +1,88 @@
+---
+title: "DATA 607 HW1"
+author: "Cesar L. Espitia"
+date: "February 3, 2017"
+output: html_document
+---
+
+The following is the setup to get the data from the UCI machine learning databases.
+
+```{r setup, include=TRUE}
+#install.packages("RCurl")
+
+library(RCurl)
+
+url <- "https://archive.ics.uci.edu/ml/machine-learning-databases/mushroom/agaricus-lepiota.data"
+
+mushroom_raw <-getURL(url)
+
+mushroom_df <- read.csv(text=mushroom_raw,header=F,sep=",", stringsAsFactors = FALSE)
+
+```
+
+I have selected the columns Edible, Shape, Cap Color, Odor, and Habitat to represent at a high level the characteristics one needs to look for to determine if the mushoom is edible or poisonous.
+
+```{r datatransform, include=TRUE}
+mushroom_df <- mushroom_df[,c(1,2,4,6,23)]
+
+#V1.
+# Edible - e or Poisinous -p are the only two options
+
+mushroom_df$V1[mushroom_df$V1=="e"] <- "Edible"
+mushroom_df$V1[mushroom_df$V1=="p"] <- "Poisonous"
+
+#V2.
+# Cap Shape bell=b,conical=c,convex=x,flat=f,knobbed=k,sunken=s
+
+mushroom_df$V2[mushroom_df$V2=="b"] <- "bell"
+mushroom_df$V2[mushroom_df$V2=="c"] <- "conical"
+mushroom_df$V2[mushroom_df$V2=="x"] <- "convex"
+mushroom_df$V2[mushroom_df$V2=="f"] <- "flat"
+mushroom_df$V2[mushroom_df$V2=="k"] <- "knobbed"
+mushroom_df$V2[mushroom_df$V2=="s"] <- "sunken"
+
+#V4
+#brown=n,buff=b,cinnamon=c,gray=g,green=r,pink=p,purple=u,red=e,white=w,yellow=y
+mushroom_df$V4[mushroom_df$V4=="n"] <- "brown"
+mushroom_df$V4[mushroom_df$V4=="b"] <- "buff"
+mushroom_df$V4[mushroom_df$V4=="c"] <- "cinnamon"
+mushroom_df$V4[mushroom_df$V4=="g"] <- "gray"
+mushroom_df$V4[mushroom_df$V4=="r"] <- "green"
+mushroom_df$V4[mushroom_df$V4=="p"] <- "pink"
+mushroom_df$V4[mushroom_df$V4=="u"] <- "purple"
+mushroom_df$V4[mushroom_df$V4=="e"] <- "red"
+mushroom_df$V4[mushroom_df$V4=="w"] <- "white"
+mushroom_df$V4[mushroom_df$V4=="y"] <- "yellow"
+
+#V6
+#Odor of the mushroom  almond=a,anise=l,creosote=c,fishy=y,foul=f, musty=m,none=n,pungent=p,spicy=s
+mushroom_df$V6[mushroom_df$V6=="a"] <- "almond"
+mushroom_df$V6[mushroom_df$V6=="l"] <- "anise"
+mushroom_df$V6[mushroom_df$V6=="c"] <- "creosote"
+mushroom_df$V6[mushroom_df$V6=="y"] <- "fishy"
+mushroom_df$V6[mushroom_df$V6=="f"] <- "foul"
+mushroom_df$V6[mushroom_df$V6=="m"] <- "musty"
+mushroom_df$V6[mushroom_df$V6=="n"] <- "none"
+mushroom_df$V6[mushroom_df$V6=="p"] <- "pungent"
+mushroom_df$V6[mushroom_df$V6=="s"] <- "spicy"
+
+#V23
+#Habitat - grasses=g,leaves=l,meadows=m,paths=p,urban=u,waste=w,woods=d
+mushroom_df$V23[mushroom_df$V23=="g"] <- "grasses"
+mushroom_df$V23[mushroom_df$V23=="l"] <- "leaves"
+mushroom_df$V23[mushroom_df$V23=="m"] <- "meadows"
+mushroom_df$V23[mushroom_df$V23=="p"] <- "paths"
+mushroom_df$V23[mushroom_df$V23=="u"] <- "urban"
+mushroom_df$V23[mushroom_df$V23=="w"] <- "waste"
+mushroom_df$V23[mushroom_df$V23=="d"] <- "woods"
+
+#updating column names
+colnames(mushroom_df) <- c("Can I Eat It?","Shape","Cap Color","Odor","Common Habitat")
+```
+
+Overall the data frame had 8124 mushrooms and 5 columsn that I renamed to Can I eat It?, Shape, Cap Color, Odor and Common Habitat for easier identification.  
+
+```{r dataview, include=TRUE}
+dim(mushroom_df)
+head(mushroom_df)
+```

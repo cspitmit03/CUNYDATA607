@@ -1,0 +1,45 @@
+---
+title: "HW 2"
+author: "Cesar L. Espitia"
+date: "February 12, 2017"
+output: html_document
+---
+
+## R and SQL
+
+Pulling in data from MySQL database.  Password is CUNYDATA in database VIDEOSQL
+
+```{r setup, echo=TRUE}
+
+library(RMySQL)
+
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "VIDEOSQL",
+                 host = "localhost",
+                 port = 3306,
+                 user = "root",
+                 password = "CUNYDATA")
+
+table_names <- dbListTables(con)
+
+reviews <- dbReadTable(con, "Reviews")
+videos <- dbReadTable(con, "Videos")
+
+tables <- sapply(table_names, DBI::dbReadTable, conn=con)
+
+query1 <- dbGetQuery(con, "select * from Videos a
+left join Reviews b
+on a.VideoID = b.VideoID")
+
+print(reviews)
+print(videos)
+print(query1)
+View(query1)
+
+```
+
+## disconnect at end of session
+
+```{r disconnect, echo=TRUE}
+dbDisconnect(con)
+```

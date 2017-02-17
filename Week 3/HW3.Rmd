@@ -1,0 +1,111 @@
+---
+title: "DATA607 - HW 3"
+author: "Cesar L. Espitia"
+date: "February 16, 2017"
+output: html_document
+---
+
+## Homework Chapter 8
+
+##Homework 3, manipulate the simpsons data.  
+
+```{r simpsons, echo=TRUE}
+library(stringr)
+snames <- c("Moe Szyslak","Burns, C. Montgomery","Rev. Timothy Lovejoy","Ned Flanders","Simpson, Homer","Dr. Julius Hibbert")
+
+## 3.1 - Generate names First Last
+# split vector using strsplit and then apply reversal 
+strsplit(snames, split=", ")
+#apply over vector reversal and past where split created space
+first_last <- sapply(strsplit(snames, split=", "),function(y) {paste(rev(y),collapse=" ")})
+print(first_last)
+
+## 3.2
+#used str_detect to see if a test is true or false
+#specific test
+title<-cbind(snames, unlist(str_detect(snames, "Dr.|Rev.")))
+print(title)
+
+#unknown test for more generic, requries all to follow convention Alpha Letters + period.
+second<-cbind(snames, unlist(str_detect(snames, "[:alpha:]{2,}[.]")))
+print(second)
+
+## 3.3
+#used str_detect to see if a test is true or false
+#specific test
+cbind(snames, str_detect(snames," [A-Z]\\."))
+```
+
+
+##Homework 4, describe the expressions and give examples.
+
+(a) [0-9]+\\$
+[0-9] describes all digits 0 through 9
+"+" says that any of the previous can be matches as many times as possibe
+\\$ indicates the dollar symbol at the end
+
+An example of this would be 10000$ but not $100
+
+(b) \\b[a-z]{1,4}\\b
+the structure \\b indicates a word wrapped with letters at the start and edge
+[a-z] indicates lowercase alpha letters that can be of length 1 through 4
+
+example data, car, at, a.  would not allow I, DOG or others
+
+(c) .*?\\.txt$
+"." indicates any item, that is a alpha,digit, or characters
+"*" means that the preceding can be matched zero plus
+"?" means it is optional but must be matched at most once
+\\.txt$ indicates that the .txt must be at the end of the string.  This is different from \\$ which is used to identify a special symbol like ! @ etc.
+
+example would be cesar.txt inclusive of .txt itself
+
+(d) \\d{2}/\\d{2}/\\d{4}
+\\d indicates that digits are expected like [:digits:]
+{n} indicates the amount expected
+/ is an actual forward slash symbol
+
+so this is expecting a date type string
+mm/dd/yyyy or dd/mm/yyyy (imperial or metric dates)
+
+(e) <(.+?)>.+?</\\1>
+\\1 indicates copy of the prior exact symbol
+() is like foil match and says items insides must be matched
+".+?" indictes that it can be any characters of any length but must occur only once as a whole in this case
+
+"<html>cesar</html>" would work but "<html>cesar</HTML>" would not
+
+```{r describe, echo=TRUE}
+##
+samples <- cbind(c("a","a","b","b","c","c","d","d","e","e"),c("10000$","$100","car","DOG","cesar.txt",
+          "-.txt","02/15/2017","2/5/2017","<html>cesar</html>","<html>cesar</HTML>"))
+df<-cbind(samples,str_detect(samples[,2], "[0-9]+\\$"),str_detect(samples[,2], "\\b[a-z]{1,4}\\b"),
+      str_detect(samples[,2], ".*?\\.txt$"),str_detect(samples[,2], "\\d{2}/\\d{2}/\\d{4}"),str_detect(samples[,2], "<(.+?)>.+?</\\1>"))
+colnames(df)<-c("3.4","Sample String","a","b","c","d","e")
+print(df)
+```
+
+please note that the test for c returns TRUE but the sample string to test c also rings true if you use the test from b.  This is becasue b says that the string just has to start or end with an alpha character.  What I am unsure of is why cesar.txt caused a trust if it is clear it is more than 4 letters.  
+
+##Homework 9, manipulate the code.  
+
+This is asking to crack the code, so I will use str_extract_all
+
+```{r hiddencode, echo=TRUE}
+code <- c("clcopCow1zmstc0d87wnkig7OvdicpNuggvhryn92Gjuwczi8hqrfpRxs5Aj5dwpn0TanwoUwisdij7Lj8kpf03AT5Idr3coc0bt7yczjatOaootj55t3Nj3ne6c4Sfek.r1w1YwwojigOd6vrfUrbz2.2bkAnbhzgv4R9i05zEcrop.wAgnb.SqoU65fPa1otfb7wEm24k6t3sR9zqe5fy89n6Nd5t9kc4fE905gmc4Rgxo5nhDk!gr")
+
+#tried alpha and too many letters
+str_extract_all(code,"[:alpha:]")
+
+#tried lower and garbage 
+str_extract_all(code,"[a-z]")
+
+#tried all capital letters and the message shows
+str_extract_all(code,"[A-Z]")
+
+#reading back I noticed that the periods parce the text even more.
+str_extract_all(code,"[A-Z]|\\.")
+
+```
+
+I am glad I am congratulated for being a super nerd "CONGRATULATIONS YOU ARE A SUPERNERD" #NERD

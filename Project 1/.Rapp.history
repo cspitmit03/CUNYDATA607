@@ -1,0 +1,89 @@
+require(stringr)#
+require(stringi)#
+#
+library(stringr)#
+#
+#load text file by reading lines#
+setwd("/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 1")#
+df <- readLines("tournamentinfo.txt")#
+df<-df[-(1:4)]#
+#remove dashes#
+lines<-c("-----------------------------------------------------------------------------------------")#
+df<-setdiff(df,lines)#
+#
+#remove spaces with 2 or more#
+df<-str_replace_all(df," {2}","")#
+#
+#collapse table by odd and even rows#
+table<-cbind(rep(1:2,64),df)#
+table1<-table[(table[,1]=="1"),2]#
+table2<-table[(table[,1]=="2"),2]#
+#
+#pull PlayerID#
+ID<-str_extract(table1,"\\d{1,2} \\| ")#
+ID<-ID[complete.cases(ID)]#
+ID<-str_extract(ID,"\\d{1,2}")#
+#
+#pull names#
+names<- str_extract_all(table1,"\\b[A-Z]{2,40}\\b")#
+names<- sapply(names, paste0, collapse=" ")#
+#
+#pull state#
+ST<-str_extract(table2,"\\w{2} \\| ")#
+ST<-ST[complete.cases(ST)]#
+ST<-str_extract(ST,"\\w{2}")#
+#
+#pull points#
+pts<- data.frame(str_extract(table1,"\\d{1}.\\d{1}"))#
+#
+#prerating#
+prerating<-str_extract_all(table2,"\\d{3,4}")#
+prerating<-matrix(unlist(prerating),ncol=4,byrow=TRUE)#
+preratings<-prerating[,3]#
+#
+#Values per match extraction#
+vals<-str_extract_all(table1,"\\d{1,2}\\|")#
+vals<-str_extract_all(table1,"\\d{1,2}")#
+lapply(vals, as.character)#
+#
+#convertdata to numeric from list/character#
+library(stringi)#
+#
+temp <- stri_list2matrix(vals, byrow = TRUE)#
+final <- `dim<-`(as.numeric(temp), dim(temp))#
+final <- final[,(4:10)]#
+#convert preratings to factor to insert into data#
+preratings<-as.factor(preratings)#
+matchvals<-data.frame(ID,preratings,#
+                 stringsAsFactors = TRUE)#
+matchvals[,1]<-as.numeric(as.character(matchvals[[1]]))#
+matchvals[,2]<-as.numeric(as.character(matchvals[[2]]))#
+#
+#replace player with pre tournament scores - prerating#
+k <- 1#
+scores<-matrix(nrow=64,ncol=7)#
+while(k<8) {#
+  scores[,k]<-final[,k]%l%matchvals#
+  k<-k+1#
+}#
+#
+#manipulate scores to determine number of games played by converting scores to 1 and NA to 0s.#
+played<-scores#
+played[!is.na(played)]<-1#
+played[is.na(played)]<-0#
+played<-rowSums(played)#
+#
+#manipulate matrix to remove NAs#
+scores[is.na(scores)]<-0#
+#
+#sumrows#
+scores<-rowSums(scores)#
+#
+#average pre chess rating#
+PreChess<-scores%/%played#
+#
+#combined Data#
+#
+totaldata<-cbind(names,ST,pts,preratings,PreChess)#
+colnames(totaldata)<-c("Player's Name","Player's State","Total Number of Points","Player's Pre-Rating","Average Pre-Chess Rating")
+final[,1]%l%matchvals

@@ -1,0 +1,136 @@
+---
+title: "Project 1 - Tournament"
+author: "Cesar L. Espitia"
+date: "February 17, 2017"
+output: html_document
+---
+
+#Reading a Chess Tournament Text File
+
+This is my project for the reading a chess tournament cross table.  I used various tools for manipulation of data that mimicked more of the Excel vlookup funtion to change the vales in the matrix of who a player played against vs. their pretournament scores.
+
+
+```{r setup, include=TRUE}
+require(stringr)
+require(stringi)
+
+library(stringr)
+library(qdapTools)
+library(stringi)
+```
+
+This section reads in the data and removes unecessary dashes.
+
+```{r readlines, include=TRUE}
+#load text file by reading lines
+setwd("/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 1")
+df <- readLines("tournamentinfo.txt")
+df<-df[-(1:4)]
+#remove dashes
+lines<-c("-----------------------------------------------------------------------------------------")
+df<-setdiff(df,lines)
+
+#remove spaces with 2 or more
+df<-str_replace_all(df," {2}","")
+```
+
+I then noticed that different data lived in the even and odd rows of the remaining data.
+Even rows had the ID of the player, name, points and who they played against.
+
+```{r tablesplit, include=TRUE}
+#collapse table by odd and even rows
+table<-cbind(rep(1:2,64),df)
+table1<-table[(table[,1]=="1"),2]
+table2<-table[(table[,1]=="2"),2]
+```
+
+From here, specific information was extraced using the newly learned stringr/stringi tools from the HW.  When pulling the player ID i looked for 1 or 2 digits and then looked only for complete cases and then trimmed any extra spaces or '|'s in the lists.
+
+For the names, i looked for all capital characters of varying lengths that had word edges.
+
+```{r pull, include=TRUE}
+#pull PlayerID
+ID<-str_extract(table1,"\\d{1,2} \\| ")
+ID<-ID[complete.cases(ID)]
+ID<-str_extract(ID,"\\d{1,2}")
+
+#pull names
+names<- str_extract_all(table1,"\\b[A-Z]{2,40}\\b")
+names<- sapply(names, paste0, collapse=" ")
+
+#pull state
+ST<-str_extract(table2,"\\w{2} \\| ")
+ST<-ST[complete.cases(ST)]
+ST<-str_extract(ST,"\\w{2}")
+
+#pull points
+pts<- data.frame(str_extract(table1,"\\d{1}.\\d{1}"))
+
+#prerating
+prerating<-str_extract_all(table2,"\\d{3,4}")
+prerating<-matrix(unlist(prerating),ncol=4,byrow=TRUE)
+preratings<-prerating[,3]
+
+#Values per match extraction
+vals<-str_extract_all(table1,"\\d{1,2}\\|")
+vals<-str_extract_all(table1,"\\d{1,2}")
+#lapply(vals, as.character)
+```
+
+At this point, I had most of my data assembled except for the math.  I had some trouble trying to figure this out, but ended up using various items from qdaptools and stringi and a lot of data frame, list to matrix manipulation.  
+
+```{r convert, include=TRUE}
+#convertdata to numeric from list/character
+
+temp <- stri_list2matrix(vals, byrow = TRUE)
+final <- `dim<-`(as.numeric(temp), dim(temp))
+final <- final[,(4:10)]
+ 
+#convert preratings to factor to insert into data
+preratings<-as.factor(preratings)
+matchvals<-data.frame(ID,preratings,
+                 stringsAsFactors = TRUE)
+matchvals[,1]<-as.numeric(as.character(matchvals[[1]]))
+matchvals[,2]<-as.numeric(as.character(matchvals[[2]]))
+
+#replace player with pre tournament scores - prerating
+k <- 1
+scores<-matrix(nrow=64,ncol=7)
+while(k<8) {
+  scores[,k]<-final[,k]%l%matchvals
+  k<-k+1
+}
+```
+
+Scores were manipulated once they were in a numeric matrix that I could manipulate.  I first converted scores to 1s and NAs as zeros so I could calculate the number of games played.
+
+```{r scores, include=TRUE}
+#manipulate scores to determine number of games played by converting scores to 1 and NA to 0s.
+played<-scores
+played[!is.na(played)]<-1
+played[is.na(played)]<-0
+played<-rowSums(played)
+
+#manipulate matrix to remove NAs
+scores[is.na(scores)]<-0
+
+#sumrows
+scores<-rowSums(scores)
+
+#average pre chess rating
+PreChess<-scores%/%played
+```
+
+Once all the data manipulation was done, the data was assembled and shown as a table using the formattable library.  Data was not sorted and is shown as it was read in from the text file.  
+
+```{r final, include=TRUE}
+#combined Data
+
+totaldata<-cbind(ID,names,ST,pts,preratings,PreChess)
+colnames(totaldata)<-c("ID","Player's Name","Player's State","Total Number of Points","Player's Pre-Rating","Average Pre-Chess Rating")
+
+
+library(formattable)
+formattable(totaldata)
+
+```

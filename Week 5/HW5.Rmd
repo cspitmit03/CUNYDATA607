@@ -1,0 +1,70 @@
+---
+title: "HW 5"
+author: "Cesar L. Espitia"
+date: "March 1, 2017"
+output: html_document
+---
+
+The following is my homework assignment for Week 5 (TIDY/DPLYR).
+
+I am loading the data from MySQL and all the libraries I will use (tidyr, dplyr, knitr, stringr, RMySQL).
+
+```{r setup, echo=TRUE}
+
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(knitr)
+library(RMySQL)
+
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "CUNY607",
+                 host = "localhost",
+                 port = 3306,
+                 user = "root",
+                 password = "CUNYDATA")
+
+table_names <- dbListTables(con)
+HW5 <- dbReadTable(con, "HW5")
+
+# Fill in missing arilines before doing cleanup
+HW5[HW5$Performance == "delayed" & HW5$LosAngeles == "62" &  HW5$Airline == "", "Airline"] <- "ALASKA"
+HW5[HW5$Performance == "delayed" & HW5$LosAngeles == "117" &  HW5$Airline == "", "Airline"] <- "AM WEST"
+
+kable(HW5, caption="Table 1. Data from MySQL with empty cells filled in")
+```
+
+Cleaning the data with dplyr and tidyr.
+
+
+```{r cleanup, echo=TRUE}
+
+HW5<-tbl_df(HW5)
+HW5a <- HW5 %>% filter(Performance != "")  %>% gather("Destination","Count",4:8)
+HW5a <- HW5a[2:5]
+HW5a <- HW5a %>% group_by(Airline, Performance, Destination) %>%spread(Performance, Count)
+colnames(HW5a) <- str_to_title(colnames(HW5a))
+kable(HW5a, caption="Table 2. Airline Data Tidy and Spread for Analysis")
+
+```
+
+Analyze Data
+
+```{r analzye, echo=TRUE}
+
+#prep data for analysis
+HW5b <- HW5a %>% mutate(Total = Delayed+`On Time`, PercentDelayed = round(Delayed/Total,2)) 
+
+#Method 1
+HW5c <- HW5b %>% group_by(Airline) %>% summarise(AirlineDelay = mean(PercentDelayed,2))
+kable(HW5c, caption="Table 3. Airline Total Delay by Taking Mean of Percent Delay of each Destination")
+
+#Method 2
+HW5d <- HW5b %>% group_by(Airline) %>% summarise(TotDelay = sum(Delayed),TotOnTime = sum(`On Time`), AirTotal = sum(Total)) %>% mutate(AirDelay = round(TotDelay/AirTotal,2))
+kable(HW5d, caption="Table 4. Airline Total Delay by summing all counts then doing a percentage")
+
+```
+
+Note that table 3 and 4 show different values based upon two approaches.  Table 4 would be the correct one for this analysis and show that Alaska Airlines has less delayes total than America West by 4% points.   
+
+Notes:  I had to use stackoverflow to determine why when I used the spread function, I would get NAs with data staggered.  I realized in reviewing comments that I needed to group the data first.  

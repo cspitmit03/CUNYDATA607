@@ -1,0 +1,146 @@
+---
+title: "Project 2 - Data Set 2"
+author: "Cesar L. Espitia"
+date: "March 12, 2017"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Data Used
+
+My second data set was from the discussion thread 'BLS earnings table' by Ambra Barboni-Alexander.  'tidyr' and 'dplyr' were the main methods to manipulate data.  This data looks at 'Average Hourly and Weekly Earnings of all Employees on Private nonfarm Payrolls by industry sector, seasonally adjusted.'
+![Figure 1.  Data Set 3. Multiple Cause of Death, 1999-2015 Results.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 2/DataSet2.png)
+
+## Reading in Data
+
+This data was read in using `htmltab` format.  
+
+```cpp
+// Reading in Data
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(knitr)
+library(htmltab)
+
+URL <- "https://www.bls.gov/news.release/empsit.t19.htm"
+
+Project6DS3 <- htmltab(doc = URL, which = "//th[text() = 'Industry']/ancestor::table")
+head(Project6DS3)
+
+kable(head(Project6DS3), caption = "Table 1. Unitdy Data")
+```
+
+
+```{r fig.width=6, fig.height=6, fig.align='center', echo=FALSE, include=FALSE}
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(knitr)
+library(htmltab)
+
+URL <- "https://www.bls.gov/news.release/empsit.t19.htm"
+
+Project6DS3 <- htmltab(doc = URL, which = "//th[text() = 'Industry']/ancestor::table")
+head(Project6DS3)
+
+kable(head(Project6DS3), caption = "Table 1. Unitdy Data")
+```
+
+
+The following begins to cleanup process.
+
+```cpp
+// Cleaning Data
+Project6DS2<-tbl_df(Project6DS2)
+Project6DS2a <- Project6DS2  %>% gather("RegionMetrics","Values",3:5)
+Project6DS2a <- Project6DS2a[2:4]
+
+Project6DS2a <- Project6DS2a %>% group_by(CensusRegion, RegionMetrics) %>% spread(CensusRegion, Values)
+colnames(Project6DS2a) <- str_to_title(colnames(Project6DS2a))
+
+
+kable(head(Project6DS2a), caption="Table 2. Data Cleaned Up and Inverted for Analysis")
+```
+
+```{r cleanup, echo=FALSE}
+
+Project6DS3 <- gather(Project6DS3, key, value, -Industry)
+#remove the $ before converting to numeric for anlaysis.
+Project6DS3[,3] <- gsub("\\$","",Project6DS3[,3])
+#remove the commas and convert to numeric
+Project6DS3[,3] <- as.numeric(gsub(",","",Project6DS3[,3]))
+
+Project6DS3a <- Project6DS3 %>% separate(key, into = c("Metric", "Period"), sep = " >> ")
+
+
+Project6DS3a <- Project6DS3a %>% group_by(Industry, Metric) %>% spread(Period, value)
+colnames(Project6DS3a) <- str_to_title(colnames(Project6DS3a))
+
+
+kable(head(Project6DS3a), caption="Table 2. Data Cleaned Up and Inverted for Analysis")
+
+```
+
+
+##Analyze Data
+
+The original question from the post was 'Average earnings comparison across industries is the first piece of analysis that could be conducted' this is being interpreted as Compare the Average Earnings across all industries.  I will index each average earning (hourly, weekly) into separate table to index over each period based upon the average to see how each one compares.  
+
+```cpp
+#normalizing function built for each column
+normalit<-function(m){
+   (m - min(m))/(max(m)-min(m))
+}
+
+Project6DS3b <- Project6DS3a %>% group_by(Metric) %>% mutate(`Feb.2017(P)` = normalit(`Feb.2017(P)`), `Jan.2017(P)` = normalit(`Jan.2017(P)`), `Dec.2016` = normalit(`Dec.2016`), `Feb.2016` = normalit(`Feb.2016`))
+
+#Method 1
+kable(Project6DS3b, caption="Table 3. Normalized Average Earnings by Industry")
+
+#subset each metric, average hourly and average weekly.
+AvgHourly <- subset(Project6DS3b, Metric=="Average hourly earnings")
+AvgWeekly <- subset(Project6DS3b, Metric=="Average weekly earnings")
+
+par(mfrow=c(1,2))
+boxplot(AvgHourly[,c(3:6)],main="Boxplot of Average Hourly", ylab="Normalized Earnings for All Industries", xlab="Periods")
+boxplot(AvgWeekly[,c(3:6)],main="Boxplot of Average Weekly", ylab="Normalized Earnings for All Industries", xlab="Periods")
+
+
+```
+
+```{r analzye, echo=FALSE, include=TRUE}
+
+#normalizing function built for each column
+normalit<-function(m){
+   (m - min(m))/(max(m)-min(m))
+}
+
+Project6DS3b <- Project6DS3a %>% group_by(Metric) %>% mutate(`Feb.2017(P)` = normalit(`Feb.2017(P)`), `Jan.2017(P)` = normalit(`Jan.2017(P)`), `Dec.2016` = normalit(`Dec.2016`), `Feb.2016` = normalit(`Feb.2016`))
+
+#Method 1
+kable(head(Project6DS3b, caption="Table 3. Normalized Average Earnings by Industry - preview"))
+
+#subset each metric, average hourly and average weekly.
+AvgHourly <- subset(Project6DS3b, Metric=="Average hourly earnings")
+AvgWeekly <- subset(Project6DS3b, Metric=="Average weekly earnings")
+
+par(mfrow=c(1,2))
+boxplot(AvgHourly[,c(3:6)],main="Boxplot of Average Hourly", ylab="Normalized Earnings for All Industries", xlab="Periods")
+boxplot(AvgWeekly[,c(3:6)],main="Boxplot of Average Weekly", ylab="Normalized Earnings for All Industries", xlab="Periods")
+
+```
+
+As can be seen from the data, Utilities is the most lucrative sector while leisure and hospitality are not. The weekly wages show that on average that most industries center around 0.57 while for the hourly wages most center around 0.47.  In theory these values should be identical, however, it appears that for the weekly calculation, more hours were worked in various sectors which would push the normalized tendency up from 0.47 to 0.57.
+
+
+##Appendix
+
+```{r appendix, echo=FALSE, include=TRUE}
+
+#Method 1
+kable(Project6DS3b, caption="Table 4. Normalized Average Earnings by Industry - FULL")
+
+```

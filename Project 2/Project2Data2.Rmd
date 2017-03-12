@@ -1,0 +1,100 @@
+---
+title: "Project 2 - Data Set 2"
+author: "Cesar L. Espitia"
+date: "March 12, 2017"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Data Used
+
+My second data set was from the discussion thread 'cause of Death' by Raghunathan Ramnath.  'tidyr' and 'dplyr' were the main methods to manipulate data.  This data looks at Multiple Cause of Death, 1999-2015 Results
+
+![Figure 1.  Data Set 2. Multiple Cause of Death, 1999-2015 Results.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 2/DataSet3.png)
+
+## Reading in Data
+
+This data was read in using `SQL` format and it was created using MySQL.
+
+```{r fig.width=6, fig.height=6, fig.align='center', echo=FALSE}
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(knitr)
+library(RMySQL)
+
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "CUNY607",
+                 host = "localhost",
+                 port = 3306,
+                 user = "root",
+                 password = "CUNYDATA")
+
+table_names <- dbListTables(con)
+Project6DS2 <- dbReadTable(con, "Project2DS2")
+
+kable(head(Project6DS2), caption = "Table 1. Unitdy Data")
+```
+
+The following begins to cleanup process.
+
+```cpp
+// Cleaning Data
+Project6DS2<-tbl_df(Project6DS2)
+Project6DS2a <- Project6DS2  %>% gather("RegionMetrics","Values",3:5)
+Project6DS2a <- Project6DS2a[2:4]
+
+Project6DS2a <- Project6DS2a %>% group_by(CensusRegion, RegionMetrics) %>% spread(CensusRegion, Values)
+colnames(Project6DS2a) <- str_to_title(colnames(Project6DS2a))
+
+
+kable(head(Project6DS2a), caption="Table 2. Data Cleaned Up and Inverted for Analysis")
+```
+
+```{r cleanup, echo=FALSE}
+
+Project6DS2<-tbl_df(Project6DS2)
+Project6DS2a <- Project6DS2  %>% gather("RegionMetrics","Values",3:5)
+Project6DS2a <- Project6DS2a[2:4]
+
+Project6DS2a <- Project6DS2a %>% group_by(CensusRegion, RegionMetrics) %>% spread(CensusRegion, Values)
+colnames(Project6DS2a) <- str_to_title(colnames(Project6DS2a))
+
+
+kable(head(Project6DS2a), caption="Table 2. Data Cleaned Up and Inverted for Analysis")
+
+```
+
+
+##Analyze Data
+
+There was no requested analysis from the thread only the type of data found.  What is interesting is to see the average across regions.  
+
+```cpp
+// Preparing Data for Analysis
+
+Project6DS1b <- Project6DS1a %>% mutate(Delta = `Shipping Fees Collected`-`Price Of Carrier`) 
+Project6DS1b <- Project6DS1b[!Project6DS1b$Delta == 0, ]
+#Method 1
+Project6DS1c <- Project6DS1b %>% group_by(Country) %>% summarise(FeeDelta = mean(Delta,2))
+kable(Project6DS1c, caption="Table 3. Average Delta Fees Collected by Country")
+
+```
+
+```{r analzye, echo=TRUE}
+
+#prep data for analysis
+Project6DS2b <- Project6DS2a %>% mutate(Average = (`Census Region 1: Northeast (Cens-R1)`+`Census Region 2: Midwest (Cens-R2)`+`Census Region 3: South (Cens-R3)`+`Census Region 4: West (Cens-R4)`)%/%4)
+
+#Method 1
+kable(Project6DS2b, caption="Table 3. Average per Metric")
+
+```
+
+Some observations:
+- For the per 100K metric, Region 4 brings down the average
+- For the deaths and Population, Region 3 raises the average
+
+For further analysis, I would consider digging deeper into Region 3.  

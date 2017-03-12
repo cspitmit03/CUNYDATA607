@@ -1,0 +1,114 @@
+---
+title: "Project 2 - Data Set 1"
+author: "Cesar L. Espitia"
+date: "March 12, 2017"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Data Used
+
+My first data set was the one I posted about the shipping analysis.  'tidyr' and 'dplyr' were the main methods to manipulate data.  This data comes from work data that I am allowed to use.
+
+![Figure 1.  Data Set 1. Shipping Data.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 2/DataSet1.png)
+
+## Reading in Data
+
+This data was read in using `CSV` format and all NAs were removed.  
+
+```{r fig.width=6, fig.height=6, fig.align='center', echo=FALSE}
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(knitr)
+library(RMySQL)
+
+Project6DS1 <- read.csv(file="/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 2/Discussion5.csv", header=TRUE, sep=",")
+
+Project6DS1[is.na(Project6DS1)]<-""
+
+kable(head(Project6DS1), caption = "Table 1. Unitdy Data")
+```
+
+The following begins to cleanup process.
+
+```cpp
+// Cleaning Data
+i <- 0
+
+while (i<1000) {
+  Project6DS1[i+2,1]<-Project6DS1[i+1,1]
+  i <- i+2
+}
+
+Project6DS1 <- Project6DS1[c(1:56),]
+
+Project6DS1<-tbl_df(Project6DS1)
+Project6DS1a <- Project6DS1  %>% gather("Country","Costs",3:10)
+
+#Convert character to numeric
+Project6DS1a[, c(4)] <- sapply(Project6DS1a[, c(4)], as.numeric)
+Project6DS1a <- Project6DS1a %>% group_by(Date, Values, Country) %>% spread(Values, Costs)
+colnames(Project6DS1a) <- str_to_title(colnames(Project6DS1a))
+
+Project6DS1a[is.na(Project6DS1a)] <- 0
+
+kable(head(Project6DS1a), caption="Table 2. Data Cleaned Up")
+}
+```
+
+```{r cleanup, echo=FALSE}
+#Copy even data values in odd values
+i <- 0
+
+while (i<1000) {
+  Project6DS1[i+2,1]<-Project6DS1[i+1,1]
+  i <- i+2
+}
+
+Project6DS1 <- Project6DS1[c(1:56),]
+
+Project6DS1<-tbl_df(Project6DS1)
+Project6DS1a <- Project6DS1  %>% gather("Country","Costs",3:10)
+
+#Convert character to numeric
+Project6DS1a[, c(4)] <- sapply(Project6DS1a[, c(4)], as.numeric)
+Project6DS1a <- Project6DS1a %>% group_by(Date, Values, Country) %>% spread(Values, Costs)
+colnames(Project6DS1a) <- str_to_title(colnames(Project6DS1a))
+
+Project6DS1a[is.na(Project6DS1a)] <- 0
+
+kable(head(Project6DS1a), caption="Table 2. Data Cleaned Up")
+
+```
+
+
+##Analyze Data
+
+The following is the analysis of the data trying to determine if we collect enough fees by country overall.  This was done using the mean across all days.  
+
+```cpp
+// Preparing Data for Analysis
+
+Project6DS1b <- Project6DS1a %>% mutate(Delta = `Shipping Fees Collected`-`Price Of Carrier`) 
+Project6DS1b <- Project6DS1b[!Project6DS1b$Delta == 0, ]
+#Method 1
+Project6DS1c <- Project6DS1b %>% group_by(Country) %>% summarise(FeeDelta = mean(Delta,2))
+kable(Project6DS1c, caption="Table 3. Average Delta Fees Collected by Country")
+
+```
+
+```{r analzye, echo=TRUE}
+
+#prep data for analysis
+Project6DS1b <- Project6DS1a %>% mutate(Delta = `Shipping Fees Collected`-`Price Of Carrier`) 
+Project6DS1b <- Project6DS1b[!Project6DS1b$Delta == 0, ]
+#Method 1
+Project6DS1c <- Project6DS1b %>% group_by(Country) %>% summarise(FeeDelta = mean(Delta,2))
+kable(Project6DS1c, caption="Table 3. Average Delta Fees Collected by Country")
+
+```
+
+Not enough fees are collected for packages going to China or the US.  

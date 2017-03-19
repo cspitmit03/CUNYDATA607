@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<catalog>
+   <book id="1">
+	<id>1</id>
+      <author>Aldous Huxley</author>
+      <title>Brave New World</title>
+      <genre>Science Fiction</genre>
+      <year>1931</year>
+      <Language>English</Language>
+   </book>
+   <book id="2">
+   <id>2</id>
+      <author>Stephen King, Peter Straub</author>
+      <title>The Talisman</title>
+      <genre>Dark Fantasy</genre>
+      <year>1984</year>
+      <Language>English</Language>
+   </book>
+   <book id="3">
+   <id>3</id>
+      <author>Isaac Asimov</author>
+      <title>I, Robot</title>
+      <genre>Science Fiction</genre>
+      <year>1950</year>
+      <Language>English</Language>
+   </book>
+</catalog>

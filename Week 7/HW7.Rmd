@@ -1,0 +1,124 @@
+---
+title: "Homework 7"
+author: "Cesar L. Espitia"
+date: "3/18/2017"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Assignment – Working with XML and JSON in R
+
+This assignment involves importing different data sources into R.  Three files were generated:
+<li>JSON - Books.json</li>
+<li>XML - Books.xml</li>
+<li>HTML - Books.html</li>
+
+Each one handling a different file format.  Three books were imported into each file including "I, Robot", "Brave New World", and "The Talisman."
+
+The files were generated using Notepad++.
+
+![Figure 1.  Notepad++ Data.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Week 7/BooksNotepad.png)
+
+## Importing the Data
+
+The HTML and XML file was imported using the XML library file and the JSON file was imported using the jsonlite program.
+
+```cpp
+// Import and Parsing Data
+library(jsonlite)
+library(XML)
+
+#Import Json
+JSONBooks <- fromJSON("CesarBooks.json", flatten=TRUE)
+class(JSONBooks)
+colnames(JSONBooks)
+
+#Import XML
+XMLBooks=xmlParse("CesarBooks.xml")
+class(XMLBooks) 
+
+#Import HTML
+HTMLBooks<-readHTMLTable('CesarBooks.html', header = TRUE)
+
+# Replace all \n by spaces
+class(HTMLBooks) 
+```
+
+```{r setup, echo=FALSE, message=FALSE, include=FALSE}
+library(jsonlite)
+library(XML)
+library(knitr)
+
+#Import Json
+JSONBooks <- fromJSON("CesarBooks.json", flatten=TRUE)
+class(JSONBooks)
+colnames(JSONBooks)
+
+#Import XML
+XMLBooks <- xmlTreeParse("CesarBooks.xml")
+XMLBooks <- xmlRoot(XMLBooks)
+XMLBooks <- xmlSApply(XMLBooks, function(x) xmlSApply(x, xmlValue))
+XMLBooks <- data.frame(t(XMLBooks),row.names=NULL)
+class(XMLBooks) 
+
+#Import HTML
+HTMLBooks <- readHTMLTable('CesarBooks.html', header = TRUE)
+
+# Replace all \n by spaces
+class(HTMLBooks) 
+```
+
+## Structures of Each File
+
+Each file is imported by R in different formats.
+
+```cpp
+// See the structre of each file.
+class(JSONBooks)
+
+class(XMLBooks) 
+
+class(HTMLBooks) 
+
+library(knitr)
+kable(head(JSONBooks), caption = "Table 1. JSON Table")
+
+kable(head(XMLBooks), caption = "Table 2. XML Table")
+
+kable(head(HTMLBooks), caption = "Table 3. HTML Table")
+```
+```{r structure, echo=TRUE, message=FALSE, include=TRUE}
+class(JSONBooks)
+
+class(XMLBooks) 
+
+class(HTMLBooks) 
+```
+
+
+```{r tables, echo=TRUE, message=FALSE, include=TRUE}
+class(JSONBooks)
+
+class(XMLBooks) 
+
+class(HTMLBooks) 
+
+library(knitr)
+kable(head(JSONBooks), caption = "Table 1. JSON Table")
+
+kable(head(XMLBooks), caption = "Table 2. XML Table")
+
+kable(head(HTMLBooks), caption = "Table 3. HTML Table")
+```
+
+## Are they identical?
+
+```{r identical, echo=TRUE, message=FALSE, include=TRUE}
+identical(JSONBooks, XMLBooks)
+identical(JSONBooks, HTMLBooks)
+identical(XMLBooks, HTMLBooks)
+```
+
+None of these frames are identical. 

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<catalog>
+   <book id="bk101">
+      <author>Gambardella, Matthew</author>
+      <title>XML Developer's Guide</title>
+      <genre>Computer</genre>
+      <year>44.95</year>
+      <Language>2000-10-01</Language>
+   </book>
+</catalog>

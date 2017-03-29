@@ -1,0 +1,50 @@
+---
+title: "Homework 9"
+author: "Cesar L. Espitia"
+date: "3/29/2017"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Assignment – Web APIs
+
+I chose the Moview Reviews API for the NYTimes.
+
+```cpp
+library(jsonlite)
+library(XML)
+library(knitr)
+library(httr)
+library(lubridate)
+library(tidyr)
+
+#Import Json
+moviesreviews <- fromJSON("https://api.nytimes.com/svc/movies/v2/reviews/search.json?api-key=9f2d716acf3141258fe2426cf7079747") %>% as.data.frame()
+head(moviesreviews)
+```
+
+```{r setup, echo=FALSE, message=FALSE, include=FALSE}
+library(jsonlite)
+library(XML)
+library(knitr)
+library(httr)
+library(lubridate)
+library(tidyr)
+library(stringr)
+
+#Import Json
+moviesreviews <- fromJSON("https://api.nytimes.com/svc/movies/v2/reviews/search.json?api-key=9f2d716acf3141258fe2426cf7079747") %>% as.data.frame()
+head(moviesreviews)
+
+```
+
+```{r call, echo=TRUE, message=FALSE, include=TRUE}
+moviesreviews$results.opening_date[is.na(moviesreviews$results.opening_date)]<-""
+head(moviesreviews)
+
+```
+
+
+As you can see from the head(moviesreviews) the data is stored as a frame.

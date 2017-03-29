@@ -1,0 +1,96 @@
+---
+title: "HW 5"
+author: "Cesar L. Espitia"
+date: "March 1, 2017"
+output: html_document
+---
+
+The following is my homework assignment for Week 5 (TIDY/DPLYR).
+
+I am loading the data from MySQL and all the libraries I will use (tidyr, dplyr, knitr, stringr, RMySQL).
+
+```{r setup, echo=TRUE}
+
+library(tidyr)
+library(dplyr)
+library(stringr)
+library(knitr)
+library(RMySQL)
+
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "datascienceskills",
+                 host = "35.185.104.222",
+                 port = 3306,
+                 user = "root",
+                 password = "data607pw")
+
+library(RMySQL)
+
+killDbConnections <- function () {
+  all_cons <- dbListConnections(MySQL())
+  print(all_cons)
+  for(con in all_cons)
+    +  dbDisconnect(con)
+  print(paste(length(all_cons), " connections killed."))
+}
+
+table_names <- dbListTables(con)
+categories <- dbReadTable(con, "Categories")
+location <- dbReadTable(con, "Location")
+Skills <- dbReadTable(con, "Skills")
+skillsdata <- dbReadTable(con, "skillsdata")
+
+all_data <- dbGetQuery(con, "SELECT Location.Description, Location.Country, Skills.SkillDescription, Categories.Description, skillsdata.Amount, skillsdata.Rating
+        FROM skillsdata LEFT JOIN (Skills LEFT JOIN Categories ON Skills.SkillCategory = Categories.CategoryID, Location)
+        ON (Skills.SkillID = skillsdata.Skill AND Location.LocationID = skillsdata.Place);")
+
+# Fill in missing arilines before doing cleanup
+HW5[HW5$Performance == "delayed" & HW5$LosAngeles == "62" &  HW5$Airline == "", "Airline"] <- "ALASKA"
+HW5[HW5$Performance == "delayed" & HW5$LosAngeles == "117" &  HW5$Airline == "", "Airline"] <- "AM WEST"
+
+kable(HW5, caption="Table 1. Data from MySQL with empty cells filled in")
+```
+
+Cleaning the data with dplyr and tidyr.
+
+
+```{r wordcloud, echo=TRUE}
+
+library(tm)
+library(SnowballC)
+library(wordcloud)
+library(dplyr)
+
+library(wordcloud)
+library(janeaustenr)
+
+all_data %>%
+  count(Description) %>%
+  with(wordcloud(SkillDescription, Description, Amount, max.words = 100))
+
+bigram_tf_idf <- all_data %>%
+  count(SkillDescription, Description) %>%
+  bind_tf_idf(SkillDescription, Description, Amount) %>%
+  arrange(desc(tf_idf))
+```
+
+Analyze Data
+
+```{r analzye, echo=TRUE}
+
+#prep data for analysis
+HW5b <- HW5a %>% mutate(Total = Delayed+`On Time`, PercentDelayed = round(Delayed/Total,2)) 
+
+#Method 1
+HW5c <- HW5b %>% group_by(Airline) %>% summarise(AirlineDelay = mean(PercentDelayed,2))
+kable(HW5c, caption="Table 3. Airline Total Delay by Taking Mean of Percent Delay of each Destination")
+
+#Method 2
+HW5d <- HW5b %>% group_by(Airline) %>% summarise(TotDelay = sum(Delayed),TotOnTime = sum(`On Time`), AirTotal = sum(Total)) %>% mutate(AirDelay = round(TotDelay/AirTotal,2))
+kable(HW5d, caption="Table 4. Airline Total Delay by summing all counts then doing a percentage")
+
+```
+
+Note that table 3 and 4 show different values based upon two approaches.  Table 4 would be the correct one for this analysis and show that Alaska Airlines has less delayes total than America West by 4% points.   
+
+Notes:  I had to use stackoverflow to determine why when I used the spread function, I would get NAs with data staggered.  I realized in reviewing comments that I needed to group the data first.  

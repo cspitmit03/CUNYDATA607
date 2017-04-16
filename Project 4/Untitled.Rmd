@@ -1,0 +1,86 @@
+---
+title: "Discussion 9 Data 604"
+author: "Cesar L. Espitia"
+date: "3/29/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(stringr)
+library(dplyr)
+library(tm)
+library(RTextTools)
+library(wordcloud)
+library(DT)
+library(ROCR)
+library(ggplot2)
+
+setwd("~/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 4")
+
+projectjunk <- VCorpus(DirSource("spam_2"))
+projectgood <- VCorpus(DirSource("easy_ham"))
+
+## update headers into 1 and 0 to differentiate for processing
+meta(projectjunk, "spam") <- 1
+meta(projectgood, "spam") <- 0
+
+projectall <- c(projectjunk, projectgood)
+
+##emails <- tm_map(emails, content_transformer(function(x) iconv(x, to = 'UTF-8-MAC', sub = 'byte')))
+##the following steps set everything to lowercase, remove any numbers, remove english stop words (built into tm) and remove all non-alpha numeric characters.
+projectall <- tm_map(projectall, content_transformer(tolower))
+projectall <- tm_map(projectall, removeNumbers)
+projectall <- tm_map(projectall, removeWords, words = stopwords("en"))
+projectall <- tm_map(projectall, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+projectall <- tm_map(projectall, stripWhitespace)
+
+set.seed(6881)
+projectall <- sample(projectall)
+
+props_classes <- bind_rows(data.frame(dataset = "training", prop.table(table(spam = meta(projectall[1:1500]))), 
+                                      stringsAsFactors = FALSE),
+          data.frame(dataset = "test", prop.table(table(spam = meta(projectall[1501:length(projectall)]))), 
+                     stringsAsFactors = FALSE))
+colnames(props_classes)[3] <- "prop"
+
+knitr::kable(props_classes)
+
+dtm <- DocumentTermMatrix(projectall, control = list(minWordLength = 2, minDocFreq = 5)) 
+dtm
+
+dtm <- removeSparseTerms(dtm, 0.95)
+dtm
+
+inspect(dtm[1:10, 1:5])
+
+findFreqTerms(dtm, 1000)
+
+container <- create_container(dtm,
+                              labels = unlist(meta(projectall)),
+                              trainSize = 1:1500,
+                              testSize = 1501:length(projectall),
+                              virgin = FALSE)
+
+models <- train_models(container, algorithms=c("SVM","TREE","MAXENT"))
+results <- classify_models(container, models)
+analytics <- create_analytics(container, results)
+summary(analytics)
+
+svm_model <- train_model(container, "SVM")
+tree_model <- train_model(container, "TREE")
+maxent_model <- train_model(container, "MAXENT")
+
+svm_out <- classify_model(container, svm_model)
+tree_out <- classify_model(container, tree_model)
+maxent_out <- classify_model(container, maxent_model)
+
+results <- cbind(meta(emails[1501:length(emails)]), svm_out, tree_out, maxent_out)
+datatable(results %>% filter(spam != SVM_LABEL | spam != TREE_LABEL | spam != MAXENTROPY_LABEL),
+             rownames = TRUE, options = list(dom = 'tp', scrollX = TRUE))
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:

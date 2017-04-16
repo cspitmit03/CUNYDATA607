@@ -1,0 +1,196 @@
+---
+title: "Project 4"
+author: "Cesar L. Espitia"
+date: "4/16/2017"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Summary
+
+This project involves predicting whether an email is SPAM or HAM using the `tm` and `RTextTools` packages.  
+
+The folders downloaded from <b>https://spamassassin.apache.org/publiccorpus/</b>.  The file `20030228_easy_ham.tar.bz2` and `20050311_spam_2.tar.bz2` are being used for this analysis.
+
+## Setup
+The following packages were used in this analysis: `stringer, dplyr, tm, RTextTools, ggplot, DT, ROCR and wordcloud`.  
+
+```cpp
+library(stringr)
+library(dplyr)
+library(tm)
+library(RTextTools)
+library(wordcloud)
+library(DT)
+library(ROCR)
+library(ggplot2)
+library(SDMTools)
+library(pROC)
+
+#Obtain current working directory.
+setwd("~/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 4")
+```
+
+```{r setup, echo=FALSE, message=FALSE, include=FALSE}
+library(stringr)
+library(dplyr)
+library(tm)
+library(RTextTools)
+library(wordcloud)
+library(DT)
+library(ROCR)
+library(ggplot2)
+library(SDMTools)
+library(pROC)
+
+setwd("~/Documents/CUNYMSDA/Data 607/CUNYDATA607/Project 4")
+
+```
+
+## Building the Corpus
+
+Used VCorpus to build the junk and good emails into spearte corpus.  The meta headers of each email was then converted to either 0 or 1 to determine if they were good emails or junk emails. 
+
+There are 1397 files from the spam file and 2501 from the ham file.
+
+```cpp
+projectjunk <- VCorpus(DirSource("spam_2"))
+projectgood <- VCorpus(DirSource("easy_ham"))
+
+## update headers into 1 and 0 to differentiate for processing
+meta(projectjunk, "spam") <- 1
+meta(projectgood, "spam") <- 0
+
+projectall <- c(projectjunk, projectgood)
+```
+
+```{r part1, echo=FALSE, message=FALSE, include=TRUE}
+projectjunk <- VCorpus(DirSource("spam_2"))
+projectgood <- VCorpus(DirSource("easy_ham"))
+
+## update headers into 1 and 0 to differentiate for processing
+meta(projectjunk, "spam") <- 1
+meta(projectgood, "spam") <- 0
+
+projectall <- c(projectjunk, projectgood)
+```
+
+
+## Cleanup and Transformatino of the Corpus
+
+The following steps set everything to lowercase, remove any numbers, remove english stop words (built into tm) and remove all non-alpha numeric characters.  This was directly from some items found in the Data Collection with R.
+
+```cpp
+projectall <- tm_map(projectall, content_transformer(function(x) iconv(x, to = 'UTF-8-MAC', sub = 'byte')))
+projectall <- tm_map(projectall, content_transformer(tolower))
+projectall <- tm_map(projectall, removeNumbers)
+projectall <- tm_map(projectall, removeWords, words = stopwords("en"))
+projectall <- tm_map(projectall, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+projectall <- tm_map(projectall, stripWhitespace)
+```
+
+```{r part2, echo=FALSE, message=FALSE, include=TRUE}
+##the following steps set everything to lowercase, remove any numbers, remove english stop words (built into tm) and remove all non-alpha numeric characters.
+projectall <- tm_map(projectall, content_transformer(function(x) iconv(x, to = 'UTF-8-MAC', sub = 'byte')))
+projectall <- tm_map(projectall, content_transformer(tolower))
+projectall <- tm_map(projectall, removeNumbers)
+projectall <- tm_map(projectall, removeWords, words = stopwords("en"))
+projectall <- tm_map(projectall, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+projectall <- tm_map(projectall, stripWhitespace)
+```
+
+
+## Sampling and Seeds
+The following section generates the training and test sets from the same files instead of using separate file contents.
+
+The document matrix had 100% sparsity, so in order to avoid terms that are infrequent from influencing the results, I will set the sparsity to .95.  THis reduces the sparsity to 82%.  The top 20 items are being shown.
+
+RTextTools are then used to determine how good the model is at predicting. 
+
+```cpp
+projectall <- tm_map(projectall, content_transformer(function(x) iconv(x, to = 'UTF-8-MAC', sub = 'byte')))
+projectall <- tm_map(projectall, content_transformer(tolower))
+projectall <- tm_map(projectall, removeNumbers)
+projectall <- tm_map(projectall, removeWords, words = stopwords("en"))
+projectall <- tm_map(projectall, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+projectall <- tm_map(projectall, stripWhitespace)
+```
+
+```{r part3, echo=FALSE, message=FALSE, include=TRUE}
+set.seed(6881)
+projectall <- sample(projectall)
+n <- length(projectall)
+label <- unlist(meta(projectall))
+
+#generate training data
+train <- data.frame(dataset = "training", prop.table(table(spam = meta(projectall[1:1500]))), 
+                                      stringsAsFactors = FALSE)
+#generate test data
+test <- data.frame(dataset = "test", prop.table(table(spam = meta(projectall[1501:n]))), 
+                                    stringsAsFactors = FALSE)
+
+#Table
+knitr::kable(bind_rows(train,test), caption="Table 1. Percent Split Between Training and Testing Data")
+
+
+projectalldtm <- removeSparseTerms(DocumentTermMatrix(projectall, control = list(minWordLength = 2, minDocFreq = 5)), 0.95)
+
+print("List of Common Terms")
+findFreqTerms(projectalldtm, 8000)
+
+
+container <- create_container(projectalldtm,
+                              labels = label,
+                              trainSize = 1:1500,
+                              testSize = 1501:n,
+                              virgin = FALSE)
+
+svm_model <- train_model(container, "SVM")
+tree_model <- train_model(container, "TREE")
+maxent_model <- train_model(container, "MAXENT")
+
+svm_out <- classify_model(container, svm_model)
+tree_out <- classify_model(container, tree_model)
+maxent_out <- classify_model(container, maxent_model)
+
+results <- cbind(meta(projectall[1501:n]), svm_out, tree_out, maxent_out)
+
+```
+
+##Analysis
+In looking at the confusion matrices,  you will notice the following results in accuracy:
+
+###1. SVM - 58 / 2398 (2.4%)
+###2. Tree - 45 / 2398 (1.9%)
+###3. Maxent - 15 / 2398 (0.6%)
+
+This means that the Maxent model produces the least amount of Type I and Type II errors.  
+
+Since maxent was the best predictor you will notice in the plots that it is nearly a right triangle to show its accuracy.  You will notice SVM and Tree with less pronounced vertices.
+
+```cpp
+projectall <- tm_map(projectall, content_transformer(function(x) iconv(x, to = 'UTF-8-MAC', sub = 'byte')))
+projectall <- tm_map(projectall, content_transformer(tolower))
+projectall <- tm_map(projectall, removeNumbers)
+projectall <- tm_map(projectall, removeWords, words = stopwords("en"))
+projectall <- tm_map(projectall, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+projectall <- tm_map(projectall, stripWhitespace)
+```
+
+```{r part4, echo=TRUE, message=FALSE, include=TRUE, warnings=FALSE}
+confusion.matrix(results$spam, maxent_out[,1])
+confusion.matrix(results$spam, svm_out[,1])
+confusion.matrix(results$spam, tree_out[,1])
+
+par(mfrow=c(1,3))
+plot(roc(results$spam, as.numeric(as.character(maxent_out[,1]))), main="Maxent")
+plot(roc(results$spam, as.numeric(as.character(svm_out[,1]))), main="SVM")
+plot(roc(results$spam, as.numeric(as.character(tree_out[,1]))), main="Tree")
+```
+
+##Conclusion
+
+The analysis posed some challenges in determining how much data to use for training and testing.  A conventional 30/70 test/training split was used to determine the data subsets for this project.  In addition, the high level of accuracy is interesting on the maxent model which was not expected.  In revieweing the weights of keywords in wasn't clear why it would rank some months as spam such as 'sep' and 'aug' and lump those in with sexual terms and specific companies like yahoo.
+

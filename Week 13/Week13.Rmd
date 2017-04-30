@@ -1,0 +1,268 @@
+---
+title: "Homework Week 13"
+author: "Cesar L. Espitia"
+date: "4/30/2017"
+output:
+  prettydoc::html_pretty:
+    theme: architect
+    highlight: github
+---
+
+## Assignment – NoSQL Migration
+
+I chose Neo4j for this assignment.  I was very intrigued in the capabilities with graphing.  I am also using the original flights data that I had from my bridge program.  
+
+
+## MySQL Export
+
+The following was how i exported the table from MySQL into a CSV for import into Neo4j.
+
+```cpp
+library(RMySQL)
+library(RNeo4j)
+library(dplyr)
+
+
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "flights",
+                 host = "localhost",
+                 port = 3306,
+                 user = "root",
+                 password = "Espiti@1")
+
+table_names <- dbListTables(con)
+
+flights <- dbReadTable(con, "flights")
+flights <- mutate(flights, id = as.numeric(rownames(flights)))
+##flights <- subset(flights, select = c(flights$id,flights$tailnum, flights$flight, flights$tailnum, flights$dest, flights$origin))
+
+write.csv(flights, file='flights.csv', row.names=FALSE)
+
+dbDisconnect(con)
+```
+
+
+```{r setup, echo=FALSE, message=FALSE, include=FALSE}
+library(RMySQL)
+library(RNeo4j)
+library(dplyr)
+
+
+con <- dbConnect(RMySQL::MySQL(),
+                 dbname = "flights",
+                 host = "localhost",
+                 port = 3306,
+                 user = "root",
+                 password = "Espiti@1")
+
+table_names <- dbListTables(con)
+
+flights <- dbReadTable(con, "flights")
+flights <- mutate(flights, id = as.numeric(rownames(flights)))
+flights[is.na(flights)]<-0
+flights <- flights[1:10000,]
+##flights <- subset(flights, select = c(flights$id,flights$tailnum, flights$flight, flights$tailnum, flights$dest, flights$origin))
+
+write.csv(flights, file='flights.csv', row.names=FALSE)
+
+dbDisconnect(con)
+```
+
+## Neo4j Import
+
+The following was how I imported the data into Neo4j.  Of special note was using the information from the neo4j blog.  http://neo4j.com/blog/upload-last-fm-data-neo4j-rneo4j-transactional-endpoint/.
+
+It was a bit difficult to retrofit the code to fit my needs on the flights database.  I used the flight and tailnum as the constraint for the graph.  
+
+The code was the imported in chunks to avoid R crashing per the blog.  All columns from the original table were imported.  
+
+
+```cpp
+path <- ("/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Week 13/flights.csv")
+con<- file(path, open="r")
+flightneo<- read.csv(con, header=TRUE, stringsAsFactors = FALSE)
+
+close(con)
+head(flightneo)
+
+graph = startGraph("http://localhost:7474/db/data/", username="neo4j", password="Espiti@1")
+clear(graph, input = FALSE)
+
+addConstraint(graph, "PlaneID", "tailnum")
+addConstraint(graph, "flightno","flights")
+
+#using import guide from neo4j
+query = "
+MERGE (:origin {name:{origin}})
+MERGE (:dest {year:{dest}})
+MERGE (:counts {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
+                arr_time:{arr_time},arr_delay:{arr_delay},carrier:{carrier},tailnum:{tailnum},
+                flight:{flight},origin:{origin},dest:{dest},air_time:{air_time},distance:{distance},
+                hour:{hour},minute:{minute},id:{id}})
+"
+
+fn = newTransaction(graph)
+
+for (i in 1:nrow(flightneo)) {
+  # Upload in blocks of 1000.
+  if(i %% 1000 == 0) {
+    # Commit current transaction.
+    commit(fn)
+    # Open new transaction.
+    fn = newTransaction(graph)
+  }
+
+  # Append paramaterized Cypher query to transaction.
+  appendCypher(fn,
+               query,
+               origin = flightneo$origin[i],
+               dest = flightneo$dest[i],
+               year = flightneo$year[i],
+               month = flightneo$month[i],
+               day = flightneo$day[i],
+               dep_time = flightneo$dep_time[i],
+               dep_delay = flightneo$dep_delay[i],
+               arr_time = flightneo$arr_time[i],
+               arr_delay = flightneo$arr_delay[i],
+               carrier = flightneo$carrier[i],
+               tailnum = flightneo$tailnum[i],
+               flight = flightneo$flight[i],
+               air_time = flightneo$air_time[i],
+               distance = flightneo$distance[i],
+               hour = flightneo$hour[i],
+               minute = flightneo$minute[i],
+               id = flightneo$id[i]
+               )
+}
+
+commit(fn)
+print("All done!")
+```
+
+
+```{r Neo4j, echo=FALSE, message=FALSE, include=FALSE}
+path <- ("/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Week 13/flights.csv")
+con<- file(path, open="r")
+flightneo<- read.csv(con, header=TRUE, stringsAsFactors = FALSE)
+
+close(con)
+head(flightneo)
+
+graph = startGraph("http://localhost:7474/db/data/", username="neo4j", password="Espiti@1")
+clear(graph, input = FALSE)
+
+addConstraint(graph, "PlaneID", "tailnum")
+addConstraint(graph, "flightno","flights")
+
+#using import guide from neo4j
+query = "
+MERGE (:origin {name:{origin}})
+MERGE (:dest {year:{dest}})
+MERGE (:counts {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
+                arr_time:{arr_time},arr_delay:{arr_delay},carrier:{carrier},tailnum:{tailnum},
+                flight:{flight},origin:{origin},dest:{dest},air_time:{air_time},distance:{distance},
+                hour:{hour},minute:{minute},id:{id}})
+"
+
+fn = newTransaction(graph)
+
+for (i in 1:nrow(flightneo)) {
+  # Upload in blocks of 1000.
+  if(i %% 1000 == 0) {
+    # Commit current transaction.
+    commit(fn)
+    # Open new transaction.
+    fn = newTransaction(graph)
+  }
+
+  # Append paramaterized Cypher query to transaction.
+  appendCypher(fn,
+               query,
+               origin = flightneo$origin[i],
+               dest = flightneo$dest[i],
+               year = flightneo$year[i],
+               month = flightneo$month[i],
+               day = flightneo$day[i],
+               dep_time = flightneo$dep_time[i],
+               dep_delay = flightneo$dep_delay[i],
+               arr_time = flightneo$arr_time[i],
+               arr_delay = flightneo$arr_delay[i],
+               carrier = flightneo$carrier[i],
+               tailnum = flightneo$tailnum[i],
+               flight = flightneo$flight[i],
+               air_time = flightneo$air_time[i],
+               distance = flightneo$distance[i],
+               hour = flightneo$hour[i],
+               minute = flightneo$minute[i],
+               id = flightneo$id[i]
+               )
+}
+
+commit(fn)
+print("All done!")
+```
+
+## Graphing
+
+The data was then transformed into node pairing using the MATCH function within Neo4j.  
+
+My goal is to match origin - count of flights - destination.  This is to show the number of flights that occur from each origin to each destination.
+
+
+```cpp
+
+#create relationships
+query = "MATCH (a:origin), (b:counts) where (a.name) = (b.origin) CREATE (a)-[:count_of]->(b)"
+
+fn = newTransaction(graph)
+appendCypher(fn, query)
+commit(fn)
+
+query = "MATCH (a:counts), (b:dest) where (a.year) = (b.dest) CREATE (a)-[:destcount]->(b)"
+
+fn = newTransaction(graph)
+appendCypher(fn, query)
+commit(fn)
+
+graph = startGraph("http://localhost:7474/db/data/", username="neo4j", password="Espiti@1")
+browse(graph)
+
+MATCH (c:origin) -[x:count_of]-(c1:counts)-[:destcount]-(d:dest) WHERE toInt(c1.flightno) = 1141 AND toString(d.dest) = "JFK" return c,x,c1,d
+```
+
+
+```{r graph, echo=FALSE, message=FALSE, include=FALSE}
+#create relationships
+query = "MATCH (a:origin), (b:counts) where (a.name) = (b.origin) CREATE (a)-[:count_of]->(b)"
+
+fn = newTransaction(graph)
+appendCypher(fn, query)
+commit(fn)
+
+query = "MATCH (a:counts), (b:dest) where (a.year) = (b.dest) CREATE (a)-[:destcount]->(b)"
+
+fn = newTransaction(graph)
+appendCypher(fn, query)
+commit(fn)
+
+graph = startGraph("http://localhost:7474/db/data/", username="neo4j", password="Espiti@1")
+browse(graph)
+
+##MATCH (c:origin) -[x:count_of]-(c1:counts)-[:destcount]-(d:dest) WHERE toInt(c1.flightno) = 1141 AND toString(d.dest) = "JFK" return c,x,c1,d
+```
+
+However, it became quickly apparent that I'm missing something critical.  In further investigating the data, it seems that the origin - coutn of portion works.  Yet, I couldn't get the pairing to match to the destination.  I'm not sure if its becasue the relationship between count of flights doesnt exist between origin and destionation. 
+
+![Figure 1.  Neo4j Investigation.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Week 13/Neo4jNodes.png)
+
+
+I believe I might have simplified the problem overtly by assuming that by grouping all the other columns besides origina and destination that counts would line up accordingly.  
+
+In clicking around the nodes in Neo4j, i notice I can't seem to get a pair matched up.  I might have to redo the table and create a new one that has this information.  
+
+![Figure 1.  Neo4j Incomplete Matches.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/Week 13/Neo4j2.png)
+
+## Comparisons
+
+Certain liberties are gone when you migrate to a NoSQL database.  For creatures that are used to structure and the ability to query easily, they may find NoSQL harder to use like I did.  However, it is easier to develop mini tables that can later be correlated together.  
+

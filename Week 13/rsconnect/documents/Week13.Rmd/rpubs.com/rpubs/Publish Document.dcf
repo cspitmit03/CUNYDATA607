@@ -1,7 +1,7 @@
 name: Publish Document
 account: rpubs
 server: rpubs.com
-appId: https://api.rpubs.com/api/v1/document/272214/c9f9fde2a48c4b9cbc5c638273049016
-bundleId: https://api.rpubs.com/api/v1/document/272214/c9f9fde2a48c4b9cbc5c638273049016
-url: http://rpubs.com/publish/claim/272214/dbf613d82208401ab040d548586e8cf6
-when: 1493593597.13094
+appId: https://api.rpubs.com/api/v1/document/272216/54cee7407d2641e58d8dac62608c1df2
+bundleId: https://api.rpubs.com/api/v1/document/272216/54cee7407d2641e58d8dac62608c1df2
+url: http://rpubs.com/cspitmit03/272216/edit
+when: 1493594253.92041

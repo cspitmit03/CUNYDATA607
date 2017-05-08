@@ -1,0 +1,177 @@
+---
+title: "DATA607 Predicting Fraud.  Data in Context."
+author: "Cesar L. Espitia"
+date: "5/1/2017"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+## Background
+
+In Social Selling, there are times when specific groups of people purposely decide to join a business opportunity with the intent of generating quick money before being detected by corporate.
+
+This is particularly common when companies are young and don't have the capabilities or staff to catch fradulent behavior before it happens.  
+
+The goal is to predict potential fraud by taking into account specific variables from various tables including Orders, Recruiting History and Location in the Tree Structure.
+
+## MSSQL and Picking Variables
+
+The data to be analyzed is transactional data that lives in MSSQL for corporate.    
+From there, other variables where generated from items found inside of this such as country, months in the business, and averages of specific variables month over month.  
+
+![Figure 1.  SQL Table.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/DataContext/SQL.png)
+
+
+## Open Connection to SQL and Store Data
+
+```cpp
+library(RODBC)
+
+driver.name <- "SQL Server"
+db.name <- "AndorraReporting"
+host.name <- "404-sql1.vm.epicservers.com\\SQL1"
+port <-""
+server.name <- "SQL1"
+user.name <-"Andorra_sa"
+pwd <- "And@13579"
+# Use a full connection string to connect to a SAMPLE database
+
+AR <- odbcConnect("404-sql1.vm.epicservers.com", uid=user.name, pwd=pwd)
+```
+
+## Open Connection to SQL and Store Data
+
+```cpp
+Downline <- sqlQuery(AR, "
+                   SELECT * FROM dbo.SVM
+                   where CustomerStatusID <> 'Other'
+                   ")
+
+#data review
+library(ggplot2)
+qplot(APE, AHighKit, data=Downline, colour=CustomerStatusID, size=I(4))
+
+odbcClose(AR)
+```
+## Show Comparison of Entry Level and Personally Enrolled
+
+The following is a graphic showing those that were terminated due to fraud detection after the fact.
+
+![Figure 2. Comparison Between Entry Level and Personally Enrolled.  ](/Users/cesarespitia/Documents/CUNYMSDA/Data 607/CUNYDATA607/DataContext/APEvsAHighKit.png)
+
+
+
+```{r cars, echo = FALSE, include=FALSE}
+
+library(RODBC)
+
+driver.name <- "SQL Server"
+db.name <- "AndorraReporting"
+host.name <- "404-sql1.vm.epicservers.com\\SQL1"
+port <-""
+server.name <- "SQL1"
+user.name <-"Andorra_sa"
+pwd <- "And@13579"
+# Use a full connection string to connect to a SAMPLE database
+
+AR <- odbcConnect("404-sql1.vm.epicservers.com", uid=user.name, pwd=pwd)
+
+Downline <- sqlQuery(AR, "
+                   SELECT * FROM dbo.SVM
+                   where CustomerStatusID <> 'Other'
+                   ")
+
+#data review
+library(ggplot2)
+qplot(APE, AHighKit, data=Downline, colour=CustomerStatusID, size=I(4))
+
+odbcClose(AR)
+```
+
+## Developing SVM to Attempt Prediction
+<font size="4">
+The following R code helps determine if I can predict a fraud case by labelling them as terminated.
+The original data set had 34 cases of terminated but with the SVM model, we aren't able to predict them.
+They turn up as Active (no fraud).
+</font>
+
+```{r SMV, echo=TRUE, warning=FALSE}
+library(e1071)
+attach(Downline)
+Downline <- Downline[c(2:11)]
+x <- subset(Downline, select=-CustomerStatusID)
+y <- CustomerStatusID
+svm_model <- svm(CustomerStatusID ~ ., data=Downline)
+pred <- predict(svm_model,x)
+
+head(table(pred,y))
+```
+
+## Summary
+<font size="4">
+The model had 34 original terminate (fraud) cases which is 1.5% of the dataset.  When using SVM to predict this it is unable to becasue in it's mind it has successfully predicted ~99% of the cases.  
+
+The model although techincally correct wouldn't be able to fit the needs of the question we are trying to answer.  Can I predict fraud (terminate) based upon existing cases.  has a 99%+ 'accuracy' and therefore require using a different method.  The next step when time permits would be to apply the methods learned from “Mini Lecture: Social Network Analysis for Fraud Detection,” Véronique Van Vlasselaer, https://www.youtube.com/watch?t=28&v=6H5Lp3i05Cg, video: 34 minutes, Nov 25, 2013.
+</font>
+
+
+## Appendix A. SQL Part 1
+
+```cpp
+Getting Pertinent Variables
+drop table #one
+select DownlineCustomerID, c.MainCountry, c.CustomerStatusID, 
+	case 
+		when c.RankID is null then 0 
+		else c.RankID end 'RankID', 
+		datediff(month, CreatedDate, getdate()) 'months', 
+count(a.customerid) 'totcust', volume22 'HighKit', volume26 'PersEnroll',
+volume86 'MBvol', volume87 'MVtot'
+into #one 
+from dbo.enrollerdownline a
+left join dbo.PeriodVolumes b
+on a.customerid = b.customerid
+left join dbo.customers c
+on a.downlinecustomerid = c.customerid
+where periodid = 7 and level >0 and DownlineCustomerID > 100000
+group by DownlineCustomerID, c.MainCountry, c.CustomerStatusID, c.RankID, CreatedDate, volume22, volume26, volume86, volume87
+```
+
+## Appendix A. SQL Part 2
+
+```
+<font size="3">
+Create View for SVM in R
+
+DROP VIEW dbo.SVM
+CREATE VIEW dbo.SVM AS
+select DownlineCustomerID, MainCountry, CustomerStatusID, max(rankid) 'maxrank', max(months) 'months', sum(totcust) 'Stotcust',
+avg(totcust) 'Atotcust', avg(HighKit) 'AHighKit', avg(PersEnroll) 'APE', avg(MBvol) 'AMBvol', avg(MVtot) 'AMVtot'
+FROM (
+select DownlineCustomerID, 
+	case
+		when c.MainCountry = '' then 'UN'
+		else c.MainCountry end 'MainCountry',
+	case 
+		when c.CustomerStatusID = 1 then 'Active'
+		when c.CustomerStatusID in (2,6) then 'Terminated/Inactive'
+		else 'Other' end CustomerStatusID, 
+	case 
+		when c.RankID is null then 0 
+		else c.RankID end 'RankID', 
+		datediff(month, CreatedDate, getdate()) 'months', 
+count(a.customerid) 'totcust', volume22 'HighKit', volume26 'PersEnroll',
+volume86 'MBvol', volume87 'MVtot'
+from dbo.enrollerdownline a
+left join dbo.PeriodVolumes b
+on a.customerid = b.customerid
+left join dbo.customers c
+on a.downlinecustomerid = c.customerid
+where periodid = 7 and level >0 and DownlineCustomerID > 100000
+group by DownlineCustomerID, c.MainCountry, c.CustomerStatusID, c.RankID, CreatedDate, volume22, volume26, volume86, volume87
+) AS ONE
+group by downlinecustomerid, MainCountry, CustomerStatusID
+</font>

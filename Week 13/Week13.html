@@ -129,12 +129,13 @@ addConstraint(graph, <span class="st">&quot;flightno&quot;</span>,<span class="s
 
 <span class="er">#using import guide from neo4j</span>
 query = <span class="st">&quot;</span>
-MERGE (:origin {name:{origin}})
-MERGE (:dest {year:{dest}})
-MERGE (:counts {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
+MERGE (o:origin {name:{origin}})
+MERGE (d:dest {year:{dest}})
+MERGE (f:flight {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
                 arr_time:{arr_time},arr_delay:{arr_delay},carrier:{carrier},tailnum:{tailnum},
                 flight:{flight},origin:{origin},dest:{dest},air_time:{air_time},distance:{distance},
                 hour:{hour},minute:{minute},id:{id}})
+CREATE (o)&lt;-[:FROM]-(f)-[:TO]-&gt;(d)
 <span class="st">&quot;</span>
 
 fn = newTransaction(graph)

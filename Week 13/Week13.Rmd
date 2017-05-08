@@ -93,12 +93,13 @@ addConstraint(graph, "flightno","flights")
 
 #using import guide from neo4j
 query = "
-MERGE (:origin {name:{origin}})
-MERGE (:dest {year:{dest}})
-MERGE (:counts {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
+MERGE (o:origin {name:{origin}})
+MERGE (d:dest {year:{dest}})
+MERGE (f:flight {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
                 arr_time:{arr_time},arr_delay:{arr_delay},carrier:{carrier},tailnum:{tailnum},
                 flight:{flight},origin:{origin},dest:{dest},air_time:{air_time},distance:{distance},
                 hour:{hour},minute:{minute},id:{id}})
+CREATE (o)<-[:FROM]-(f)-[:TO]->(d)
 "
 
 fn = newTransaction(graph)
@@ -156,12 +157,13 @@ addConstraint(graph, "flightno","flights")
 
 #using import guide from neo4j
 query = "
-MERGE (:origin {name:{origin}})
-MERGE (:dest {year:{dest}})
-MERGE (:counts {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
+MERGE (o:origin {name:{origin}})
+MERGE (d:dest {year:{dest}})
+MERGE (f:flight {year:{year},month:{month},day:{day},dep_time:{dep_time},dep_delay:{dep_delay},
                 arr_time:{arr_time},arr_delay:{arr_delay},carrier:{carrier},tailnum:{tailnum},
                 flight:{flight},origin:{origin},dest:{dest},air_time:{air_time},distance:{distance},
                 hour:{hour},minute:{minute},id:{id}})
+CREATE (o)<-[:FROM]-(f)-[:TO]->(d)
 "
 
 fn = newTransaction(graph)
@@ -241,6 +243,11 @@ commit(fn)
 
 query = "MATCH (a:counts), (b:dest) where (a.year) = (b.dest) CREATE (a)-[:destcount]->(b)"
 
+fn = newTransaction(graph)
+appendCypher(fn, query)
+commit(fn)
+
+query ="MATCH (n) RETURN n LIMIT 75"
 fn = newTransaction(graph)
 appendCypher(fn, query)
 commit(fn)
